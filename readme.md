@@ -95,5 +95,10 @@ python -m app.rag.retriever
 # Stage 2 — Block 1: Connect Groq LLM
 
 ## Step-1: Real LLM + RAG Security
+- install Dependecy 
+```python
+python -m pip install langchain langchain-groq python-dotenv
+```
+## Step-2: Configure G
 
 
