@@ -1,0 +1,43 @@
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# ChromaDB database
+chroma_db/
+
+# Machine learning models and cache
+.cache/
+models/
+*.pt
+*.pth
+*.onnx
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Build files
+build/
+dist/
+*.egg-info/

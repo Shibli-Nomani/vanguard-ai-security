@@ -1,0 +1,23 @@
+
+fastapi
+uvicorn
+pydantic
+python-dotenv
+pandas
+pytest
+httpx
+
+# RAG
+chromadb
+sentence-transformers
+
+# LLM and Agent
+langchain
+langchain-groq
+langchain-chroma
+langgraph
+langchain-community
+python-dotenv
+
+# Dashboard
+streamlit
