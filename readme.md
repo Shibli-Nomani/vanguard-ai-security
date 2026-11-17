@@ -379,4 +379,100 @@ These are initially deterministic workflow agents: each node calls an existing P
 
 ![alt text](image-7.png)
 
+## Stage 3 — Block 1: Build the LangGraph workflow
+- install : python -m pip install langgraph
+- **Create File: app/agents/orchestrator.py**
+
+```python
+# Create LangGraph workflow
+workflow = StateGraph(SecurityState)
+
+workflow.add_node("redteam", redteam_agent)
+workflow.add_node("rag_security", rag_security_agent)
+workflow.add_node("evidence", evidence_agent)
+workflow.add_node("report", report_agent)
+
+workflow.add_edge(START, "redteam")
+workflow.add_edge("redteam", "rag_security")
+workflow.add_edge("rag_security", "evidence")
+workflow.add_edge("evidence", "report")
+workflow.add_edge("report", END)
+
+app = workflow.compile()
+```
+| Code | Simple meaning |
+|---|---|
+| `SecurityState` | Shared information passed between agents |
+| `StateGraph()` | Creates the workflow |
+| `add_node()` | Adds an agent/task |
+| `add_edge()` | Defines which agent runs next |
+| `START` | Beginning of the assessment |
+| `END` | Workflow finishes |
+| `compile()` | Prepares the workflow for execution |
+| `invoke({})` | Starts the workflow |
+
+### Step - Final : 4 Agents Summary
+| Agent | Main purpose | What it does | Input | Output |
+|---|---|---|---|---|
+| **1. Red Team Agent (Attacker / Tester)** | Find weaknesses in the AI assistant | Runs prompt injection and jailbreak tests against Groq LLM | Synthetic attack prompts | LLM responses, attack results, and canary leakage status |
+| **2. RAG Security Agent (Document Security Tester)** | Check RAG system security | Tests poisoned documents, untrusted retrieval, and restricted data leakage | ChromaDB documents and test questions | Poisoning assessment, retrieval risks, and leakage results |
+| **3. Evidence Agent (Investigator)** | Collect and organize security findings | Combines results from Agents 1 and 2, counts tests, and confirmed exact secret disclosures | Red Team and RAG Security results | Structured security evidence and summary |
+| **4. Report Agent (Documentation Officer)** | Generate final assessment report | Converts collected evidence into a JSON report with timestamp and findings | Evidence Agent output | `langgraph_report_*.json` |
+
+### Step - Execution
+```sh
+python -m app.agents.orchestrator
+```
+
+```Text
+Multi-Agent Security Assessment
+[Agent 1] Running Red Team Tests
+[Agent 2] Running RAG Security Tests
+[Agent 3] Collecting Evidence
+[Agent 4] Generating Report
+```
+
+### Agent-1:
+![alt text](image-9.png)
+
+### Agent 2 , Agent 3 and Agent 4
+
+![alt text](image-10.png)
+
+
+# Stage 4 — Build a secure MCP server
+MCP (Model Context Protocol) allows AI applications to connect with external tools and services through a standard interface.
+- test whether an AI agent can access only the tools and operations it is authorized to use.
+
+| Tool | Purpose | Employee | Admin |
+|---|---|---|---|
+| `read_security_policy` | Read synthetic company security policy | Allowed | Allowed |
+| `read_network_record` | Read restricted synthetic network information | Denied | Allowed |
+| `delete_network_record` | Delete a synthetic network record | Denied | Denied in this lab |
+
+- **The server must enforce these rules itself. An LLM instruction alone cannot provide reliable authorization.**
+
+## Step-1: Install MCP
+```sh
+python -m app.mcp.security_server
+```
+
+## Step-2: MCP Permission Architecture (Permission Logic Demonstration)
+```sh
+LangGraph Agent
+      |
+      v
+   MCP Client
+      |
+      v
+   MCP Server
+      |
+      v
+Permission Check
+      |
+      +---- Allowed ---> Return synthetic data
+      |
+      +---- Denied ----> Reject operation
+```
+**Note:** A real MCP server must obtain the user's role from a verified identity/session, not trust a role chosen by an agent. A real MCP server must obtain the user's role from a verified identity/session, not trust a role chosen by an agent.
 

@@ -19,5 +19,8 @@ langgraph
 langchain-community
 python-dotenv
 
+# MCP
+mcp[cli]
+
 # Dashboard
 streamlit
