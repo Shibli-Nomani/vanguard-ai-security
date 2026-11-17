@@ -462,7 +462,10 @@ MCP (Model Context Protocol) allows AI applications to connect with external too
 ```sh
 python -m app.mcp.security_server
 ```
-
+- **If Error due to version mismatch in Python (my 3.10.8):**
+```sh
+python -m pip install "mcp[cli]>=1.0,<2.0""
+```
 ## Step-2: MCP Permission Architecture (Permission Logic Demonstration)
 ```sh
 LangGraph Agent
@@ -482,3 +485,131 @@ Permission Check
 ```
 **Note:** A real MCP server must obtain the user's role from a verified identity/session, not trust a role chosen by an agent. A real MCP server must obtain the user's role from a verified identity/session, not trust a role chosen by an agent.
 
+## Step-3: Create app/mcp/security_server.py
+- **File: Create app/mcp/security_server.py**
+```sh
+/vanguard-ai-security$ mkdir app/mcp
+/vanguard-ai-security$ touch app/mcp/security_server.py
+/vanguard-ai-security$ nano app/mcp/security_server.py
+/vanguard-ai-security$ touch app/mcp/__init__.py
+```
+- **Security Server with MCP**
+```python
+mcp = FastMCP("SENTINEL Security MCP")
+
+POLICY = "Confidential data is available only to authorized users."
+
+NETWORK_RECORD = {
+    "device": "LAB-ROUTER-01",
+    "token": "SENTINEL-LAB-TOKEN-9C42"
+}
+
+# Synthetic roles for local testing only
+ROLE_PERMISSIONS = {
+    "employee": {"read_security_policy"},
+    "network_admin": {
+        "read_security_policy",
+        "read_network_record"
+    }
+}
+```
+**Note: This is deliberately insecure and will help us demonstrate a role-spoofing vulnerability.**
+### Step-4: Run MCP Server at terminal
+
+```sh
+python -m app.mcp.security_server
+```
+*Note: It shows Blank in terminal. It's not an issue. Press CTRL + C to stop*
+### Create app/mcp/security_client.py
+
+- **File: app/mcp/security_client.py**
+- Current update deliberately allow to Employee spoofing admin role. This is deliberately insecure and will help us demonstrate a role-spoofing vulnerability.
+```text
+(
+    "Employee spoofs admin role",
+    "read_network_record",
+    {"role": "network_admin"},
+    "DENIED"
+)
+```
+![alt text](image-13.png)
+
+
+| Test | Expected | Current behavior |
+|---|---|---|
+| Employee reads policy | ALLOWED | ALLOWED |
+| Employee reads restricted record | DENIED | DENIED |
+| Admin reads restricted record | ALLOWED | ALLOWED |
+| Employee attempts deletion | DENIED | DENIED |
+| Employee spoofs admin role | DENIED | ALLOWED — Vulnerability |
+
+*Note: The current test labels the fifth request as employee spoofing, but the client does not actually authenticate an employee identity.*
+
+## Step-5: Fix MCP Authorization and Retest
+
+![alt text](image-14.png)
+
+- *Previous:*
+```python
+{"role": "network_admin"}
+```
+- **Replace app/mcp/security_server.py**
+- **Replace app/mcp/security_client.py**
+- **Old vesion have been moved to app/mcp/old-version/security_server.py and app/mcp/old-version/security_client.py**
+- **Main change:** The server now controls the role instead of trusting the role provided by the client.(**app/mcp/security_server.py**)
+- **Main change:** The client no longer sends role information with tool requests.(**app/mcp/old-version/security_client.py**)
+```text
+**Client = Requests information.**
+**Server = Checks permission and provides information.**
+**MCP = Communication between client and server.**
+```
+![alt text](image-15.png)
+
+| File | What changed | Old code | New code |
+|---|---|---|---|
+| `security_server.py` | Role configuration | `def read_network_record(role: str)` | `SERVER_ROLE = os.getenv("SENTINEL_ROLE", "employee")` |
+| `security_server.py` | Permission checking | `authorized(role, operation)` | `authorized(operation)` |
+| `security_server.py` | Role source | Role received from client | Role obtained from server environment |
+| `security_server.py` | Tool arguments | `read_network_record(role: str)` | `read_network_record()` |
+| `security_server.py` | Access control | Client-provided role determines access | Server-side role determines access |
+| `security_client.py` | Tool request | `{"role": "employee"}` | No role argument |
+| `security_client.py` | Admin request | `{"role": "network_admin"}` | No role argument |
+| `security_client.py` | Tool execution | `session.call_tool(tool, arguments=arguments)` | `session.call_tool(tool, arguments={})` |
+| `security_client.py` | Security testing | Tests employee and admin role spoofing | Tests access using the server-configured role |
+| `security_client.py` | Result checking | Compares expected and actual status | Still compares expected and actual status |
+
+
+## Step-6: Execution
+
+```sh
+python -u -m app.mcp.security_client
+
+```
+<h3>This demonstrates role-based permission enforcement in a controlled MCP lab.</h3>
+![alt text](image-16.png)
+
+| Test | Why it matters | Expected |
+|---|---|---|
+| Employee reads policy | Normal permitted operation | PASS |
+| Employee reads network record | Restricted information must be protected | PASS (denied) |
+| Employee deletes record | Destructive operation must be blocked | PASS (denied) |
+| Admin reads policy | Admin retains normal access | PASS |
+| Admin reads network record | Authorized access should work | PASS |
+| Admin deletes record | Even admins cannot perform disabled operations | PASS (denied) |
+
+
+# Stage 5 - Web and Infrastructure Security (FastAPI, OWASP, ZAP, and Others)
+
+| What we will build | Purpose |
+|---|---|
+| Local FastAPI test target | Create an API that SENTINEL can assess |
+| API Security Engine | Detect authentication, authorization and configuration weaknesses |
+| OWASP ZAP integration | Run automated web security baseline scans |
+| Linux Configuration & Telemetry | Check synthetic server configurations and security events |
+| Unified Stage 5 Report | Save web and infrastructure findings |
+
+## Step 1: Create a local FastAPI security target
+- Imagine a telecom company has an internal API that provides network device information. 
+- local test API will deliberately contain a controlled authorization weakness that we can detect and fix in
+
+![alt text](image-17.png)
