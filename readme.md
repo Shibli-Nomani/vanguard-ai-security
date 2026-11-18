@@ -613,3 +613,119 @@ python -u -m app.mcp.security_client
 - local test API will deliberately contain a controlled authorization weakness that we can detect and fix in
 
 ![alt text](image-17.png)
+
+## step-2: Install dependencies
+```sh
+python -m pip install fastapi uvicorn httpx
+```
+## step-3: Create app/targets/web_target.py
+- A normal employee should be able to read public information, but 
+- only a network administrator should access restricted records.
+
+```python
+public_policy():
+    return {
+        "policy": "Protect confidential network information."
+    }
+```
+```python
+network_record(
+    role: str = Header(default="employee", alias="X-Role")
+):
+return {
+        "status": "DENIED",
+        "message": "Administrator access required"}
+```
+## step-4: run public API
+```sh
+python -m uvicorn app.targets.web_target:app --host 127.0.0.1 --port 8001
+```
+- **Access FastAPI UI using web browser**
+```sh
+http://127.0.0.1:8001/docs
+```
+
+- Execute with **Try it out** from FastAPI
+- **Public-Policy **
+![alt text](image-18.png)
+
+- **ntework-record**
+  ![alt text](image-19.png)
+
+
+## step-5: Automated API Security Testing
+- FastAPI target test is running **(GET /network-record)**
+- A security engine that automatically checks whether unauthorized users can access restricted network information
+- Already created a deliberately vulnerable endpoint:**(GET /network-record)**
+
+| Test | Request | Expected secure behavior |
+|---|---|---|
+| 1. Public access | `/public-policy` | Allow |
+| 2. Normal employee | `/network-record` without admin role | Deny |
+| 3. Claimed admin | `/network-record` with `X-Role: network_admin` | Must not grant access based on an unverified claim |
+| 4. Invalid role | `/network-record` with `X-Role: hacker` | Deny |
+
+## step-6: Create app/engines/api_security_engine.py
+**File: app/engines/api_security_engine.py**
+- Keep the FastAPI running in one terminal
+- another terminal to execute the api_security_engine
+## step-7: Execute Test
+```sh
+python -m uvicorn app.targets.web_target:app --host 127.0.0.1 --port 8001
+```
+```sh
+python -m app.engines.api_security_engine
+```
+![alt text](image-20.png)
+
+- 3 out of 4 security tests passed. 
+- 1 vulnerability detected:
+```text
+Test: Unverified admin role claim
+HTTP Status: 200
+Result: FAIL
+```
+
+![alt text](image-21.png)
+
+## Stage - Block 2: OWASP ZAP (Zed Attack Proxy) Integration
+![alt text](image-22.png)
+
+| Current API Security Engine | OWASP ZAP |
+|---|---|
+| Tests our specific authorization rules | Scans for common web security weaknesses |
+| Detects unverified role claims | Checks security headers, configuration and other web risks |
+| Uses Python + HTTPX | Uses a dedicated web security scanner |
+| Tests custom business logic | Provides standardized scan alerts |
+
+## step-1: Run and check Docker in (wsl + terminal)
+
+```sh
+wsl -l -v
+wsl -d docker-desktop
+
+# docekr status
+
+docker --version
+docker info
+
+```
+## step-2: create OWASP-ZAP/run_zap.ps1
+- Check and make docker operational
+- Can be run with or without virtual terminal (powershell)
+- Docker starts an OWASP ZAP container pulling from online.
+- ZAP connects to your local FastAPI application.
+- It examines the application using baseline checks.
+- It writes the findings into reports/zap_report.json
+
+![alt text](image-23.png)
+
+```sh
+Get-Item reports\zap_report.json
+```
+**Note:** File is in reports/zap_report.json
+
+![alt text](image-25.png)
+## step-3: ZAP output
+OWASP ZAP scan completed successfully and identified 2 Low-risk security alerts and 1 Informational alert in your FastAPI application.
+![alt text](image-24.png)

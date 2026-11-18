@@ -22,5 +22,10 @@ python-dotenv
 # MCP
 mcp[cli]
 
+# FastAPI
+fastapi 
+uvicorn 
+httpx
+
 # Dashboard
 streamlit
